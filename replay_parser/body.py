@@ -84,7 +84,7 @@ class ReplayBody:
         buffer_size = self.replay_reader.size()
         while self.replay_reader.offset() + 3 <= buffer_size:
             command_type, command_data = self.parse_command_and_get_data()
-            yield self.tick, command_type, command_data
+            yield self.tick, command_type, command_data, self.command_unpacked
 
     def parse_command_and_get_data(self) -> Tuple[Optional[int], Optional[bytes]]:
         """
@@ -164,6 +164,8 @@ class ReplayBody:
             cmd_string, data = command_data["lua_name"], command_data["lua"]
             if cmd_string == "GiveResourcesToPlayer" and "Msg" in data:
                 self.messages[self.tick] = (data["Sender"], data["Msg"]["to"], data["Msg"]["text"])
+        
+        self.command_unpacked = command_data
 
         if self.store_body:
             self.tick_data.setdefault(self.player_id, {})[command_name] = command_data

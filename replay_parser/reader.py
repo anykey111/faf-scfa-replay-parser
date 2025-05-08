@@ -34,7 +34,8 @@ class ReplayReader:
             if char_ == b'\x00':
                 break
             res += char_
-        return res.decode()
+        # note: fix non-utf charactes like 'J?p'
+        return res.decode(encoding='utf-8', errors='replace')
 
     def read_number(self, type_: str = "<i", size: int = 4) -> Union[int, float]:
         """

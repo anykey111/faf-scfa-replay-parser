@@ -6,7 +6,7 @@ from replay_parser.reader import ReplayReader, TYPE_LUA
 __all__ = ('COMMAND_PARSERS',)
 
 
-TYPE_VECTOR = Tuple[float, float, float]
+TYPE_VECTOR = List[float]
 TYPE_FORMATION = Optional[Dict[str, Union[float, TYPE_VECTOR]]]
 TYPE_TARGET = Dict[str, Union[int, TYPE_VECTOR]]
 TYPE_COMMAND_DATA = Dict[str, Union[int, bytes, TYPE_TARGET, TYPE_FORMATION]]
@@ -14,7 +14,7 @@ TYPE_ENTITY_IDS_SET = Dict[str, Union[int, List[int]]]
 
 
 def _read_vector(reader: ReplayReader) -> TYPE_VECTOR:
-    return reader.read_float(), reader.read_float(), reader.read_float()
+    return [reader.read_float(), reader.read_float(), reader.read_float()]
 
 
 def command_advance(reader: ReplayReader) -> Dict[str, int]:
@@ -53,11 +53,10 @@ def command_single_step(reader: ReplayReader) -> Dict:
 def command_create_unit(reader: ReplayReader) -> Dict[str, Union[int, str, TYPE_VECTOR]]:
     army_index = reader.read_byte()
     blueprint_id = reader.read_string()
-    x, y, heading = _read_vector(reader)
     return {"type": "create_unit",
             "army_index": army_index,
             "blueprint_id": blueprint_id,
-            "vector": (x, y, heading)}
+            "vector": _read_vector(reader)}
 
 
 def command_create_prop(reader: ReplayReader) -> Dict[str, Union[str, TYPE_VECTOR]]:
@@ -118,22 +117,22 @@ def _parse_target(reader: ReplayReader) -> TYPE_TARGET:
 
 def _parse_command_data(reader: ReplayReader) -> TYPE_COMMAND_DATA:
     command_id = reader.read_int()
-    arg1 = reader.read(4)
+    arg1 = reader.read_int()
     command_type = reader.read_byte()
-    arg2 = reader.read(4)
+    arg2 = reader.read_int()
 
     target = _parse_target(reader)
 
-    arg3 = reader.read(1)
+    arg3 = reader.read_byte()
     formation = _parse_formation(reader)
 
     blueprint_id = reader.read_string()
 
-    arg4 = reader.read(12)
+    arg4 = [  reader.read_uint(), reader.read_uint(), reader.read_uint() ]
     arg5 = None
     cells = reader.read_lua()
     if cells:
-        arg5 = reader.read(1)
+        arg5 = reader.read_byte()
 
     return {"command_id": command_id,
             "command_type": command_type,
@@ -232,9 +231,9 @@ def command_lua_sim_callback(reader: ReplayReader) -> Dict[str, Union[str, TYPE_
     data = None
     if lua:
         size = reader.read_int()
-        data = reader.read(4 * size)
+        data = reader.read(4 * size).hex()
     else:
-        data = reader.read(4 + 3)
+        data = reader.read(4 + 3).hex()
 
     return {"type": "lua_sim_callback",
             "lua_name": lua_name,
